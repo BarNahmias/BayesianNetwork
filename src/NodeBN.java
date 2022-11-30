@@ -15,6 +15,8 @@ public class NodeBN {
     private int index = 0;
     private BNGraph graph;
 
+    public int first= 0;
+
     public NodeBN(String name, ArrayList<String> variable, ArrayList<String> definition, ArrayList<NodeBN> parents, BNGraph graph) {
         this.name = name;
         this.variable = variable;
@@ -106,8 +108,12 @@ public class NodeBN {
         return cpt1;
     }
 
+    public void addFirst(){
+        this.first++;
+    }
     public void setCpt(CPT cpt) {
         this.cpt = cpt;
     }
+
 
 }

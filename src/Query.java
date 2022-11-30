@@ -1,11 +1,10 @@
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.text.DecimalFormat;
+import java.util.*;
 
 public class Query {
 
     private BNGraph bnGraph;
     private  String queryString;
-    private  HashMap<String, HashMap<String,String>> simp = new HashMap<>();
     private  HashMap<String,String> evidence =new HashMap<>();
     private HashMap<String,String> query =new HashMap<>();
     private  HashMap<String,String> algoindex =new HashMap<>();
@@ -26,19 +25,87 @@ public class Query {
         this.queryString = queryString;
     }
 
+    public double BayesianInference(String proQuery)throws Exception{
+        String q= proQuery.split("P\\(")[1].split("=")[0];
+        String out = proQuery.split("P\\(")[1].split("\\|")[0];
+         String var=  proQuery.split("\\|")[0].split("=")[1];
+        ArrayList<String> sm =new ArrayList<String>();
+        System.out.println("out : " +out);
+        System.out.println("var : " +var);
+
+        double numerator = simpleBayesianInference(proQuery);
+
+        for (String outcome : bnGraph.graph.get(q).getVariable())
+        {
+
+            if (!Objects.equals(outcome, var))
+            {
+                System.out.println("var : " +var +" outcom : "+outcome);
+
+            String  temp="P("+  q + "=" + outcome +"|"+ proQuery.split("\\|")[1];
+            sm.add(temp);
+            }
+        }
+        double denominator=0;
+        for (String newQuery: sm)
+        {
+            denominator+=simpleBayesianInference(newQuery);
+           addCounter++;
+        }
+        addCounter--;
+
+        denominator+=numerator;
+        addCounter++;
+
+
+        return numerator/denominator;
+    }
+
+
+    public double simpleBayesianInference(String proQuery)throws Exception{
+        System.out.println(proQuery);
+
+        String [] buff=createSimpleQuery(proQuery);
+        double result = 0;
+        for (String strQuery:buff)
+        {
+              System.out.println(strQuery);
+
+              double temp = 1;
+              result+= findCurrProbability(strQuery);
+
+            DecimalFormat df = new DecimalFormat("###.#############");
+//            System.out.println("queryString : " +df.format(result));
+           this.addCounter++;
+        }
+        addCounter--;
+
+        return result;
+    }
 
 
     public  double findCurrProbability(String query) throws Exception {
+        this.queryString=query;
+        getInfoFromQuery();
         query=query.split("P\\(")[1].split("\\)")[0];
         query=query.replace('|',',');
         long count = query.chars().filter(ch -> ch == ',').count()+1;
         String[] buff= query.split(",",Math.toIntExact(count));
         double pi = 1;
-        for (int i=0;i<count;i++){
-            System.out.println("bu " +buff[i]+" : "+findVariableProbability(buff[i]));
+        for (int i=0;i<count;i++)
+        {
+//            System.out.println("bu " +buff[i]+" : "+findVariableProbability(buff[i]));
+            DecimalFormat df = new DecimalFormat("###.##########");
             pi*=findVariableProbability(buff[i]);
+//            System.out.println("curr " +df.format(+pi));
             mullCounter++;
         }
+        mullCounter--;
+
+        DecimalFormat df = new DecimalFormat("###.###########");
+
+//        System.out.println("pi " +df.format(pi));
+
         return pi;
     }
 
@@ -47,7 +114,7 @@ public class Query {
     public  double findVariableProbability(String currVariable) throws Exception {
 
         String variableName=currVariable.split("=")[0];
-        this.getInfoFromQuery();
+//        this.getInfoFromQuery();
 
         CPT cpt = bnGraph.graph.get(variableName).getCpt();
 
@@ -61,174 +128,37 @@ public class Query {
                 {
                     if(currVariable.contains(str))
                     {
-                        sum=sum+ cpt.cpt.get(kay);
-                        addCounter ++;
+                        sum=cpt.cpt.get(kay);
                     }
                 }
             }
             else
             {
-                String best = '['+currVariable + ", "+ findMyParents(variableName).toString().split("\\[")[1].split("\\]")[0]+']';
-                System.out.println("query best "+variableName+" : " + best);
-                    System.out.println("str best "+kay.toString());
-                System.out.println("bool " +kay.toString().equals(best));
+                String best =  '['+findMyParents(variableName).toString().split("\\[")[1].split("\\]")[0]+ ", "+ currVariable +']';
+
                     if (kay.toString().equals(best)) {
-                        sum = sum + cpt.cpt.get(kay);
-                        addCounter++;
-
+                        sum =cpt.cpt.get(kay);
+//
+//                        System.out.println("find best "+variableName+" : " + best);
+//                        System.out.println("kay best "+kay.toString());
                 }
             }
 
         }
+//        System.out.println("total prob for : " +currVariable+ " : "+sum);
+
         qPro=sum;
         return sum;
     }
 
 
-
-
-
-//        findProbability are calculate probability of query variable when given are parents
-//    from cpt table
-
-    public  double findQueryProbability() throws Exception {
-        String query=this.queryString;
-        this.getInfoFromQuery();
-        CPT cpt = bnGraph.graph.get(this.listOfValuesFromQuery.get(0).toString()).getCpt();
-        double sum = 0.0;
-
-        for (ArrayList<String> kay :cpt.cpt.keySet())
-        {
-            if(bnGraph.graph.get(cpt.name).getParents().isEmpty() || findMyParents(cpt.name).isEmpty() )
-            {
-                for (String str: kay)
-                {
-                    if(this.query.toString().contains(str))
-                    {
-                        sum=sum+ cpt.cpt.get(kay);
-                        addCounter ++;
-                    }
-                }
-            }
-            else
-            {
-                String best =  findMyParents(this.listOfValuesFromQuery.get(0)).toString().split("\\[")[1].split("\\]")[0];
-                System.out.println("query best" + best);
-                for (String str : kay) {
-                        if (best.contains(str)&&(query.contains(str))) {
-                            sum = sum + cpt.cpt.get(kay);
-                            addCounter++;
-                        }
-                    }
-                }
-
-        }
-        qPro=sum;
-        return sum;
-    }
-
-    public  double findEvidenceProbability() throws Exception {
-
-        String query=this.queryString;
-//        getInfoFromQuery();
-
-        double eviPro = 1;
-        for (String evidence :this.evidence.keySet())
-        {
-            CPT cpt = new CPT(bnGraph.graph.get(evidence));
-            double sum = 0;
-            if (bnGraph.graph.get(evidence).getParents().isEmpty() || findMyParents(evidence).isEmpty() ) {
-                for (ArrayList<String> kay : cpt.cpt.keySet()) {
-                        if (kay.contains(evidence.toString())) {
-                            sum = sum + cpt.cpt.get(kay);
-                            addCounter++;
-                        }
-                }
-            }
-            else {
-                String best = findMyParents(evidence).toString().split("\\[")[1].split("\\]")[0];
-                for (ArrayList<String> kay : cpt.cpt.keySet()) {
-                        if (kay.contains(best)) {
-                            sum = sum + cpt.cpt.get(kay);
-                            sum *=qPro;
-                            addCounter++;
-                            mullCounter++;                        }
-                    }
-
-            }eviPro*=sum;
-        }
-        return eviPro;
-    }
-
-
-
-    public  double findHiddenProbability() throws Exception {
-
-        String query=this.queryString;
-        double hiddPro = 1;
-
-        for (String hidden :this.hidden)
-        {
-            CPT cpt = new CPT(bnGraph.graph.get(hidden));
-            double sum = 0;
-            if (bnGraph.graph.get(hidden).getParents().isEmpty()|| findMyParents(hidden).isEmpty()) {
-                System.out.println("best : "+hidden+ ": , " + " fin : "+findMyParents(hidden).toString());
-
-                for (ArrayList<String> kay : cpt.cpt.keySet()) {
-                        if (kay.toString().contains(hidden)) {
-                            sum = sum + cpt.cpt.get(kay);
-                            addCounter++;
-                        }
-                }
-            }
-            else {
-                String a  = findMyParents(hidden).toString().split("\\[")[1].split("\\]")[0];
-//                String newBest [] = best.split(",",findMyParents(hidden).size()-1);
-                System.out.println("best : "+hidden+ ": , " + " fin : "+findMyParents(hidden).toString());
-
-                for (ArrayList<String> kay : cpt.cpt.keySet()) {
-                        if (kay.contains(a)&&(kay.toString().contains(hidden))) {
-                            sum = sum + cpt.cpt.get(kay);
-                            addCounter++;
-                            System.out.println("sum : "+hidden+ ": , " + sum);
-                        }
-                }
-
-            }
-            if (sum!=0){
-            hiddPro*=sum;
-            mullCounter++;}
-        }
-        return hiddPro;
-    }
-
-
-    public double simpleBayesianInference()  throws Exception{
-        double queryVariable = findQueryProbability();
-        double evidenceVariable=findEvidenceProbability();
-        double  hiddenVariable=findHiddenProbability();
-        System.out.println("queryVariable "+ queryVariable );
-        System.out.println("evidenceVariable "+ evidenceVariable );
-        System.out.println("hiddenVariable "+ hiddenVariable );
-
-        mullCounter+=3;
-        return queryVariable*evidenceVariable*hiddenVariable;
-    }
-
-
-    public double getFinalPro(String ask){
-
-
-
-        return 0;
-    }
-
-
-
-
-        //    getInfoFromQuery are get query input (string)  exam :  " P(B=T|J=T,M=T),2 "
+    //    getInfoFromQuery are get query input (string)  exam :  " P(B=T|J=T,M=T),2 "
     //    Finds all variables  and assigns to the appropriate fields
     public  void getInfoFromQuery() throws Exception {
+        this.query.clear();
+        this.evidence.clear();
+        this.hidden.clear();
+        this.listOfValuesFromQuery.clear();
         String row = this.queryString;
         Character alg =row.charAt(row.length()-1);
         //        add algo number
@@ -247,15 +177,10 @@ public class Query {
             {
                 evidence.put(sm[i].split("=")[0],sm[i].split("=")[1]);
                 this.allVariableFromQuery.put(sm[i].split("=")[0],sm[i].split("=")[1]);
-
                 this.listOfValuesFromQuery.add(sm[i].split("=")[0]);
             }
         }
-
         this.listOfValuesFromQuery.add(alg.toString());
-        this.simp.put("query",query);
-        this.simp.put("evidence",evidence);
-        this.simp.put("algoindex",algoindex);
         findHidden();
     }
 
@@ -272,6 +197,7 @@ public class Query {
     public  ArrayList <String> findMyParents(String nodeName){
         ArrayList <String> myParents = new ArrayList<>();
 
+
         for (NodeBN node: bnGraph.graph.get(nodeName).getParents()) {
                 if (!myParents.contains(node.getName())) {
 
@@ -284,20 +210,83 @@ public class Query {
 
                 }
             }
+
+//        Collections.reverse(myParents);
         return myParents;
     }
 
-    public String getBestKay(){
-        String key = this.query.toString();
-        key = key.split("\\{")[1].split("\\}")[0];
-        key = key +", ";
-        for (String str: this.evidence.keySet())
+
+
+    public  String [] createSimpleQuery(String myQuery) throws Exception {
+        this.queryString=myQuery;
+        setQueryString(myQuery);
+        getInfoFromQuery();
+//        System.out.println("queryString : " +queryString);
+//        System.out.println("hh : " +hidden.toString());
+
+        int counter = 1;
+
+        for (String hidd:hidden)
         {
-            key=key + str +"="+  this.evidence.get(str) +", ";
+            counter*=bnGraph.graph.get(hidd).getVariable().size();
         }
-        key=key.substring(0,key.length()-2);
-        return key;
+        String hiddenQuery= myQuery.split("\\)")[0];
+        String end=myQuery.split("\\)")[1];
+        String [] buffQuery = new String[counter];
+
+        HashMap<String, Integer> modolo =culculate(this.hidden);
+        System.out.println("modolo : " +modolo.keySet().toString() +modolo.values().toString());
+
+        for(int i=0;i<counter;i++)
+        {
+            String temp =hiddenQuery;
+            for (String hidd:hidden)
+            {
+
+                if(i%modolo.get(hidd)==0)
+                {
+//                    System.out.println("modolo1 : "+ i%modolo.get(hidd) +"   " +hidd +"  " +bnGraph.graph.get(hidd).getVariable().get(bnGraph.graph.get(hidd).first));
+
+                    if(i!=0)
+                    {
+                        bnGraph.graph.get(hidd).addFirst();
+                    }
+                    if (  bnGraph.graph.get(hidd).first>  bnGraph.graph.get(hidd).getVariable().size()-1)
+                    {
+                        bnGraph.graph.get(hidd).first=0;
+                    }
+//                    System.out.println("first true : " + hidd +" " +   bnGraph.graph.get(hidd).first);
+
+                    temp=temp+","+hidd+"="+bnGraph.graph.get(hidd).getVariable().get(bnGraph.graph.get(hidd).first);
+                }
+                else
+                {
+
+//                    System.out.println("modolo : "+ i%modolo.get(hidd) +"   " +hidd+"  " +bnGraph.graph.get(hidd).getVariable().get(bnGraph.graph.get(hidd).first));
+//                    System.out.println("first else : " + hidd +" " +   bnGraph.graph.get(hidd).first);
+
+                    temp=temp+","+hidd+"="+bnGraph.graph.get(hidd).getVariable().get(bnGraph.graph.get(hidd).first);
+                }
+
+            }
+            temp=temp+')'+end;
+
+//            System.out.println("temp : " +temp);
+
+            buffQuery[i]=temp;
+        }
+        return buffQuery;
     }
+
+    HashMap<String, Integer>   culculate (List<String> hidden )
+    {
+        HashMap<String, Integer> modolo = new HashMap<String, Integer>();
+        for (int index = 0; index < hidden.size(); index++) {
+            modolo.put(hidden.get(index), (int) Math.pow(bnGraph.graph.get(hidden.get(index)).getVariable().size(), index ));
+        }
+        return modolo;
+    }
+
 
     public BNGraph getBnGraph() {
         return bnGraph;
@@ -315,13 +304,6 @@ public class Query {
         this.queryString = queryString;
     }
 
-    public HashMap<String, HashMap<String, String>> getSimp() {
-        return simp;
-    }
-
-    public void setSimp(HashMap<String, HashMap<String, String>> simp) {
-        this.simp = simp;
-    }
 
     public HashMap<String, String> getEvidence() {
         return evidence;
