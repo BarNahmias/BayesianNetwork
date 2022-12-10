@@ -6,11 +6,23 @@ public class CPT {
     String name;
     HashMap<ArrayList<String>, Double> cpt  = new HashMap<>();
 
+//    NodeBN node;
     public CPT(HashMap<ArrayList<String>, Double> cpt, String name) {
         this.cpt = cpt;
         this.name = name;
     }
+
+//    copy constructor
+
+    public CPT(CPT other){
+        this.name = other.name;
+        for (ArrayList<String> row:other.cpt.keySet()) {
+            this.cpt.put(row,other.cpt.get(row));
+        }
+    }
+//    constructor
     public CPT() {}
+
     public CPT(NodeBN nodeBN) {
         this.name = nodeBN.getName();
 
@@ -76,10 +88,14 @@ public class CPT {
     HashMap<String, Integer>   culculateModolo (NodeBN node)
     {
         HashMap<String, Integer> modolo = new HashMap<String, Integer>();
-        System.out.println("parent size :" +node.getParents().size()+ node.getParents().get(3).toString());
+            int outcome =node.getVariable().size();
+        for (int index = node.getParents().size()-1; index >= 0; index--) {
+            modolo.put(node.getParents().get(index).getName(),outcome);
+//            System.out.println("parent size :" +node.getParents().get(index).getName() +" mod "+ outcome);
 
-        for (int index = 0; index < node.getParents().size(); index++) {
-            modolo.put(node.getParents().get(index).getName(), (int) Math.pow(node.getParents().get(index).getVariable().size(), node.getParents().size()-index));
+            outcome*=node.getParents().get(index).getVariable().size();
+
+
         }
         modolo.put(node.getName(), (int) Math.pow(node.getVariable().size(), 0));
 

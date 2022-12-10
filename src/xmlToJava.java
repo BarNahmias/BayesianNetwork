@@ -45,26 +45,26 @@ public class xmlToJava {
 
 
 
-            for (int variable = 0; variable < variableList.getLength(); variable++)
-            {
+            for (int variable = 0; variable < variableList.getLength(); variable++) {
                 NodeBN nodeBNtemp = new NodeBN();
                 nodeBNtemp.setGraph(bnGraph);
                 Node node = variableList.item(variable);
 
-                if (node.getNodeType() == Node.ELEMENT_NODE)
-                {
+                if (node.getNodeType() == Node.ELEMENT_NODE) {
                     Element element = (Element) node;
                     String NAME = element.getElementsByTagName("NAME").item(0).getTextContent();
+
                     nodeBNtemp.setName(NAME);
 
-                    for(int outcome = 0; outcome <element.getElementsByTagName("OUTCOME").getLength();outcome++)
-                    {
-                      nodeBNtemp.getVariable().add(element.getElementsByTagName("OUTCOME").item(outcome).getTextContent());
+                    for (int outcome = 0; outcome < element.getElementsByTagName("OUTCOME").getLength(); outcome++) {
+                        nodeBNtemp.getVariable().add(element.getElementsByTagName("OUTCOME").item(outcome).getTextContent());
                     }
                 }
+                bnGraph.insertNodeBN(nodeBNtemp.getName(), nodeBNtemp);
 
-                bnGraph.insertNodeBN(nodeBNtemp.getName(),nodeBNtemp);
-
+            }
+            for (int variable = 0; variable < variableList.getLength(); variable++)
+            {
                 Node node1 = definitionList.item(variable);
                 if (node1.getNodeType() == Node.ELEMENT_NODE)
                 {
@@ -73,6 +73,7 @@ public class xmlToJava {
 
                     for (int giv = 0; giv < element.getElementsByTagName("GIVEN").getLength(); giv++)
                     {
+
                         bnGraph.graph.get(FOR).getParents().add(bnGraph.graph.get(element.getElementsByTagName("GIVEN").item(giv).getTextContent()));
                         bnGraph.graph.get(FOR).empty=false;
 
@@ -83,12 +84,12 @@ public class xmlToJava {
                         table=element.getElementsByTagName("TABLE").item(tab).getTextContent();
 
                     }
-//                    bnGraph.graph.get(FOR).getDefinition().add("0.0");
                     split( bnGraph.graph.get(FOR).getDefinition(),table);
 
                 }
-
             }
+
+
 
         }
         catch(ParserConfigurationException | SAXException | IOException e)
